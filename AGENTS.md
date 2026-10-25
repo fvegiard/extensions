@@ -146,7 +146,7 @@ When editing or adding skills in this repo, follow these rules (and add new skil
 
 ## PR-specific documents (`.pr/`)
 
-When working on a PR that requires design documents, live-test logs, development-only scripts, or other temporary artifacts that should **not** be merged to `main`, store them in a `.pr/` directory at the repository root.
+When working on a PR that requires design documents, live-test logs, development-only scripts, or other temporary artifacts that should be removed after merging to `main`, store them in a `.pr/` directory at the repository root.
 
 ```bash
 mkdir -p .pr
@@ -160,14 +160,15 @@ mkdir -p .pr
 The `PR Artifacts` workflow (`.github/workflows/pr-artifacts.yml`) owns the lifecycle of this directory:
 
 1. **Notification**: When a PR contains `.pr/`, a single comment is posted to the PR conversation alerting reviewers.
-2. **Auto-cleanup on approval**: For same-repository PRs, the directory is automatically removed by a follow-up commit when the PR is approved.
-3. **Post-merge cleanup**: If artifacts reach `main`, including through a fork PR, the workflow opens or updates a cleanup PR against `main`.
+2. **Post-merge cleanup**: After a same-repository or fork PR merges to `main`, the workflow automatically opens or updates a cleanup PR to remove the directory from `main`.
 
 Important notes:
 
 - Do not put anything in `.pr/` that needs to be preserved.
 - The `.pr/` check is informational during development; it posts a notice rather than blocking the PR.
 - Cleanup PRs follow the normal review and required-check protections for `main`.
+- npm packaging excludes `.pr/` while its cleanup PR is pending, so temporary review artifacts do not ship in releases.
+- Release PRs fail the required `test` check while their committed tree contains `.pr/`. Merge the artifact-cleanup PR and let release-please update the release PR before merging it.
 
 ## CI / validation gotchas
 
@@ -208,3 +209,36 @@ Important notes:
 
 - Prefer the official OpenHands docs on skills: https://docs.openhands.dev/overview/skills
 - Prefer the SDK skill guide: https://docs.openhands.dev/sdk/guides/skill
+
+## Dependency release-age policy
+
+- Wait at least seven days after publication before adding or updating a
+  third-party npm or PyPI version, including transitive lockfile changes.
+  A weekly update schedule alone does not enforce this minimum age.
+- Keep Dependabot `cooldown.default-days: 7` for npm and Python version
+  updates, and preserve `tool.uv.exclude-newer = "7 days"` where configured.
+  Existing named first-party exceptions do not exempt their third-party
+  dependencies. Do not add broad exemptions or disable the cutoff to make a
+  resolver succeed.
+- Verify the exact version's publication/upload time from npm or PyPI metadata
+  (or artifact `upload-time` in `uv.lock`), not the package's creation date.
+  If age cannot be established, report the missing evidence rather than guess.
+- Security updates can bypass Dependabot cooldown. An urgent exception needs
+  explicit maintainer approval recorded in the PR with the package, version,
+  advisory/reason, and publication time. Agents must not grant themselves an
+  exception. Keep overrides narrow and remove temporary exceptions afterward.
+- Use the committed lock for reproducible installs; review newly resolved
+  artifacts before committing a lock update.
+
+For manual npm dependency resolution, use npm >= 11.10 with
+`npm install --min-release-age=7` (days), or verify registry timestamps before
+committing the result. Older npm versions do not enforce this option. `npm ci`
+replays the lock and is not proof that newly locked versions meet the age rule.
+
+Use uv >= 0.9.25 for this policy. Older versions cannot parse the boolean
+first-party exemptions and can discard the entire `[tool.uv]` table, including
+`required-version`. Check `uv --version` before running `uv sync`, `uv lock`,
+or `uv run`; this repository does not commit a lockfile to reject old parsers.
+The named exemptions cover the released SDK, tools, workspace, and agent-server
+packages used by the documented import checks; their third-party dependencies
+still have the seven-day cutoff.

@@ -117,11 +117,27 @@ window.
 
 ### Dependencies and supply chain
 
-Apply the general seven-day release-recency guard to the exact dependency version,
-regardless of the package's age or popularity. Validate installation with the
-package manager and runtime used by the extension. Temporary git pins and
-unreleased package APIs are blockers for merge unless the PR is an explicit,
-coordinated stack that will replace them before release.
+Validate installation with the package manager and runtime used by the extension.
+Temporary git pins and unreleased package APIs are blockers for merge unless the
+PR is an explicit, coordinated stack that will replace them before release.
+
+For dependency additions or updates, inspect every changed third-party npm or
+PyPI version, including transitive lockfile changes. Require at least seven days
+since publication of that exact version. Use registry publication/upload metadata
+or the relevant artifact's `uv.lock` `upload-time`; a weekly bot schedule, an old
+package name, or a passing install is not age evidence.
+
+For an under-seven-day artifact, leave a COMMENT naming the package, version,
+publication time, and source, and defer approval until it ages out or a maintainer
+explicitly approves a narrowly documented exception. If publication time is
+unavailable, ask for that evidence. Existing named first-party exemptions apply
+only to those packages, not their third-party dependencies or blanket approval
+of the lockfile. Apply this check before any dependency-bump fast path.
+
+Flag removal or weakening of seven-day uv/Dependabot guards or new broad
+exemptions. Dependabot security updates bypass cooldown, so review them under
+the explicit maintainer-exception rule in `AGENTS.md`; agents cannot approve
+their own bypass.
 
 ### Design context for deep changes
 
@@ -146,10 +162,9 @@ deep change lacks it, weigh the gap by risk:
   the diff would materially slow or weaken the review.
 - **LOW** risk: never block on missing design context alone.
 
-Approving a same-repository PR removes its `.pr/` directory. If a temporary
-`.pr/` page is the only design explanation, submit a COMMENT review instead of
-approving, so the page remains for the human maintainer's decision, unless the
-PR description already carries the durable equivalent.
+Temporary `.pr/` artifacts remain available during review and are removed through
+a cleanup PR after merge to `main`. Preserve any design explanation needed beyond
+that cleanup in the PR description or permanent documentation.
 
 Design context aids review; it does not excuse correctness, security,
 architecture, or repository-ownership problems.
