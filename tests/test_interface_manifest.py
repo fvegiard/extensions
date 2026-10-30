@@ -44,6 +44,15 @@ def test_manifest_validates_against_its_schema():
     _validate(MANIFEST)
 
 
+def test_events_page_declares_source_management():
+    assert MANIFEST["routes"]["events"] == "/automations/events"
+    assert [item["page"] for item in MANIFEST["navigation"]["subPages"]] == [
+        "list", "events", "templates"
+    ]
+    assert MANIFEST["pages"]["events"]["title"] == "Event sources"
+    assert MANIFEST["endpoints"]["webhooks"] == "/v1/webhooks"
+
+
 def test_featured_automations_resolve_to_catalog_entries():
     for automation_id in MANIFEST["featuredAutomationIds"]:
         manifest = AUTOMATIONS / "catalog" / automation_id / "manifest.json"
@@ -111,6 +120,16 @@ def test_featured_automations_resolve_to_catalog_entries():
             lambda doc: _filter(doc, "created_by")["options"].append(
                 {"value": "team", "label": "My team"}
             ),
+        ),
+        (
+            "a tag filter declaring options, whose values come from the service",
+            lambda doc: _filter(doc, "tag").update(
+                options=[{"value": "all", "label": "All tags"}]
+            ),
+        ),
+        (
+            "a tag filter without the default option's label",
+            lambda doc: _filter(doc, "tag").pop("allLabel"),
         ),
         (
             "more filters than the host renders",

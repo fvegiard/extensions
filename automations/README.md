@@ -93,6 +93,13 @@ not it ships a setup flow. Integrations are keyed by id, and each id must match 
 never listed with nothing attached. `required` defaults to true; state `false` only for an integration
 setup can proceed without.
 
+`requires.builtInIntegrations` lists the integrations built into an OpenHands Cloud or Enterprise instance
+(Settings > Integrations) that the automation cannot run without, by provider name (`bitbucket_data_center`,
+`jira_dc`, ...). State it only for an integration no MCP server can stand in for, such as a self-hosted Data
+Center product: a user cannot connect one from the card, so a host that knows the instance's built-in
+integrations can rank the entry below the others, or hide it, where one is missing, and a host without
+built-in integrations, such as a local backend, never offers it.
+
 `skill` names the `skills/` directory that builds this automation today, and defaults to `id`, so only the
 three entries whose names differ from their skill state it. The command that launches that skill is **not**
 repeated here: it lives once, in the skill's own `triggers:` frontmatter, and the skills catalog exposes it.
@@ -278,7 +285,9 @@ falling back to its built-in defaults when the manifest is absent or fails admis
   `total-runs`, `average-duration`), filter option values name host predicates (`status`: enabled /
   latest-run-failed / disabled; `trigger`: `event` matches event-triggered automations, `schedule`
   everything else; `created_by`: `me` matches automations the signed-in user created, `others` everything
-  else, and the host decides where it is shown), `sort` values name host comparators, and `insights`
+  else, and the host decides where it is shown; `tag` declares no options, because its values are the
+  tags the automation service reports for the org, and the host hides it when there are none), `sort`
+  values name host comparators, and `insights`
   captions the host's run-health states and per-automation stats. The health precedence, the run
   sampling, the value formatting, the relative-time rendering, and the filtered-empty state with its reset
   button are the host's - a manifest cannot redefine them, only relabel what appears. Tile `detail` copy is
@@ -353,6 +362,7 @@ Two findings came out of that check and are baked into the entries:
 | `POST /v1` | Exists; accepts `template` provenance from OpenHands/automation#344 |
 | `GET /v1/capabilities` | Exists (OpenHands/automation#270) |
 | `POST /v1/validate` | Exists (OpenHands/automation#270) |
+| `GET /v1/tags` | Added by OpenHands/automation#622 |
 
 None of these appear in a catalog entry. Their service-relative paths are stated once, in
 `interface.json`'s `endpoints` block, which is why settling on different paths changes no catalog entry at
@@ -397,9 +407,12 @@ Recorded rather than resolved, because they need an owner outside this contract:
 - **Distribution.** Agent Canvas pins `@openhands/extensions`, so changing an entry still needs a version
   bump and a dependency update. Delivering "change automation UI without a Canvas release" needs runtime
   loading.
-- **Integration credentials at runtime.** Dropping `requires.secrets` assumes a created automation can use
-  the credential behind a connected integration. Whether the automations service receives it, and how, is
-  not settled here.
+- **Integration credentials at runtime.** The automations service passes no integration credential to a
+  run. An entry that needs a token names a saved secret instead (`githubTokenSecret`, default
+  `GITHUB_PERSONAL_ACCESS_TOKEN`), and its script resolves that name through the sandbox's secret lookup;
+  on OpenHands Cloud and Enterprise that lookup also serves the connected GitHub account's token
+  (`github_token`) as the fallback. Whether a run should ever receive the credential behind a connected
+  integration from `integrations/catalog` is not settled here.
 - **Grouped review rows.** The review screen is now one row per field. The hand-written summaries grouped
   related fields onto one line, which reads better; if that matters, it is a host concern, not an entry's.
 - **Assisted-setup completion.** The assisted flow ends at a conversation, so the host cannot emit a
